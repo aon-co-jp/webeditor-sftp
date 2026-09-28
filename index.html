@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>webeditor-sftp</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>webeditor-sftp <span class="badge">prototype</span></h1>
+        <nav class="tabs">
+          <button id="tab-blog" class="tab active" data-mode="blog">ブログモード</button>
+          <button id="tab-code" class="tab" data-mode="code">コーディングモード</button>
+          <button id="tab-sftp" class="tab" data-mode="sftp">SFTP鍵管理</button>
+        </nav>
+      </header>
+
+      <main>
+        <section id="panel-blog" class="panel active">
+          <p class="hint">
+            HTMLタグを意識せず、見出しや段落として文章を書くと自動でタグ化されます(プロトタイプ:
+            変換ロジック未実装、テキストエリアのみ)。
+          </p>
+          <textarea id="blog-editor" placeholder="ここに記事本文を書いてください…"></textarea>
+        </section>
+
+        <section id="panel-code" class="panel">
+          <p class="hint">
+            生のHTML/CSS/JS/TSを編集するモード(プロトタイプ: CodeMirror
+            6統合は未実装、テキストエリアのみ)。
+          </p>
+          <textarea id="code-editor" spellcheck="false" placeholder="&lt;!doctype html&gt;..."></textarea>
+        </section>
+
+        <section id="panel-sftp" class="panel">
+          <p class="hint">
+            秘密鍵・公開鍵の生成/保管/SFTPアップロード(プロトタイプ:
+            UIのみ、Rust側の鍵生成・セキュアストレージ・SFTP接続は未実装)。
+          </p>
+          <div class="sftp-form">
+            <label>ホスト <input id="sftp-host" placeholder="例: audiocafe.tokyo" /></label>
+            <label>ユーザー名 <input id="sftp-user" placeholder="例: root" /></label>
+            <label>アップロード先パス <input id="sftp-path" placeholder="例: /var/www/audiocafe.tokyo/public" /></label>
+            <button id="btn-generate-key">鍵ペアを生成(未実装)</button>
+            <button id="btn-upload">SFTPアップロード(未実装)</button>
+            <pre id="sftp-log" class="log"></pre>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
