@@ -46,3 +46,45 @@ pub fn generate_pairing_qr(payload: &PairingPayload) -> Result<String, SftpError
     let b64 = base64::engine::general_purpose::STANDARD.encode(png_bytes);
     Ok(format!("data:image/png;base64,{b64}"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// カメラハードウェアなしで検証できる範囲: 生成したQRコードのPNGを
+    /// 実際のQRデコーダー(`rqrr`)で読み取り、元のペイロードが完全に
+    /// 一致して復元できることを確認する。これは「QRとしてエンコード
+    /// した内容は正しくデコード可能」という、フロント側のカメラ読取
+    /// (`jsqr`)が最終的にやっていることと同じ検証を行うものであり、
+    /// モバイル実機でのカメラそのものの動作確認(照明条件・オート
+    /// フォーカス等)の代わりにはならない点に注意。
+    #[test]
+    fn generated_qr_is_decodable_and_roundtrips() {
+        let payload = PairingPayload {
+            label: "audiocafe.tokyo-root".to_string(),
+            public_key_openssh: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample audiocafe.tokyo-root"
+                .to_string(),
+            fingerprint: "SHA256:exampleFingerprintValue".to_string(),
+        };
+
+        let data_uri = generate_pairing_qr(&payload).unwrap();
+        let b64_part = data_uri
+            .strip_prefix("data:image/png;base64,")
+            .expect("data URIのプレフィックスが想定と異なる");
+        let png_bytes = base64::engine::general_purpose::STANDARD
+            .decode(b64_part)
+            .unwrap();
+
+        let gray_image = image::load_from_memory(&png_bytes).unwrap().to_luma8();
+        let mut prepared = rqrr::PreparedImage::prepare(gray_image);
+        let grids = prepared.detect_grids();
+        assert_eq!(grids.len(), 1, "QRコードが1つ検出されるはず");
+
+        let (_meta, decoded_text) = grids[0].decode().expect("QRデコードに失敗");
+        let decoded: PairingPayload = serde_json::from_str(&decoded_text).unwrap();
+
+        assert_eq!(decoded.label, payload.label);
+        assert_eq!(decoded.public_key_openssh, payload.public_key_openssh);
+        assert_eq!(decoded.fingerprint, payload.fingerprint);
+    }
+}
