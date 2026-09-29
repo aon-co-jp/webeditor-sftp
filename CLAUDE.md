@@ -46,9 +46,15 @@ webeditor-sftp/
   に残さない設計とする。
 - 保存先は各OSのセキュアストレージAPI経由。実装は`keyring`クレート
   (Windows: Credential Manager / macOS: Keychain / Linux: Secret
-  Service)。`src-tauri/src/sftp/keystore.rs`参照。Android/iOSの
-  Keystore/Keychain対応は各プラットフォームビルド時に要検証(未実機
-  確認)。
+  Service)。`src-tauri/src/sftp/keystore.rs`参照。
+  **⚠️重要**: `keyring`クレート3.x系はOS別バックエンドfeature
+  (`windows-native`/`apple-native`/`linux-native-sync-persistent`)を
+  `Cargo.toml`の`[target.'cfg(...)'.dependencies]`で明示的に有効化
+  しないと、書き込みがエラーを返さず無音で失敗する(2026-09-29に
+  実機検証で発覚・修正済み、詳細はPORTING.md参照)。新しいOSターゲット
+  を追加する際は、対応するfeatureを必ず追加すること。Android向けの
+  ネイティブバックエンドはkeyringクレートに存在しないため、Android
+  実機対応時は別のセキュアストレージ手段を要検討。
 - 鍵ペア生成はed25519(`russh-keys`、`src-tauri/src/sftp/keys.rs`)。
 - SFTP接続は`russh`+`russh-sftp`(純Rust実装、libssh2/OpenSSLへの
   ネイティブ依存なし、`src-tauri/src/sftp/client.rs`)。

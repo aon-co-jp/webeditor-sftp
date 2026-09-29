@@ -33,7 +33,6 @@ serde_json = "1"
 russh = "0.45"
 russh-keys = "0.45"
 russh-sftp = "2"
-keyring = "3"
 rand = "0.8"
 base64 = "0.22"
 thiserror = "2"
@@ -45,6 +44,24 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 
 async-trait = "0.1"
 dirs = "5"
+
+# keyringクレート3.x系はプラットフォームごとの実バックエンドを明示的な
+# featureで有効化しないと、実際には何も永続化しない「無音の失敗」に
+# なる(2026-09-29に実機検証で発覚、PORTING.md参照)。OS別に正しい
+# featureを指定する。Android向けのネイティブバックエンドは
+# keyringクレートに存在しないため、Android/iOS実機対応は別途検討要
+# (PORTING.md参照)。
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

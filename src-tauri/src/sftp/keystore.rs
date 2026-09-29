@@ -38,3 +38,28 @@ pub fn delete_private_key(label: &str) -> Result<(), SftpError> {
         Err(e) => Err(SftpError::KeyStore(e.to_string())),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn store_and_verify_via_cmdkey() {
+        let label = "diag-verify-key";
+        store_private_key(label, "dummy-private-key-content").unwrap();
+
+        let loaded = load_private_key(label).unwrap();
+        assert_eq!(loaded, "dummy-private-key-content");
+
+        let output = std::process::Command::new("cmdkey")
+            .arg("/list")
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        eprintln!("=== cmdkey /list output ===\n{stdout}");
+        eprintln!("=== contains 'webeditor-sftp'? {} ===", stdout.contains("webeditor-sftp"));
+        eprintln!("=== contains '{label}'? {} ===", stdout.contains(label));
+
+        delete_private_key(label).unwrap();
+    }
+}
