@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState } from "@codemirror/state";
 import { html } from "@codemirror/lang-html";
+import jsQR from "jsqr";
 
 // ==========================================================================
 // モード切替(ブログ/コーディング/SFTP鍵管理)
@@ -161,12 +162,46 @@ document.querySelector<HTMLButtonElement>("#btn-generate-key")?.addEventListener
   }
 });
 
-document.querySelector<HTMLButtonElement>("#btn-upload")?.addEventListener("click", async () => {
+interface ExecOutputDto {
+  exit_status?: number;
+  stdout: string;
+  stderr: string;
+}
+interface UploadResultDto {
+  remote_path: string;
+  bytes_written: number;
+  host_key_trust: "trusted_first_time" | "known";
+  exec_output?: ExecOutputDto;
+}
+
+function logUploadResult(result: UploadResultDto) {
+  if (result.host_key_trust === "trusted_first_time") {
+    appendSftpLog(
+      "⚠️ このホストへの初回接続です。ホスト鍵を新規に信頼して記録しました(TOFU)。" +
+        "サーバーのフィンガープリントを別経路(VPSコンソール等)で確認することを推奨します。",
+    );
+  }
+  appendSftpLog(`アップロード完了: ${result.remote_path} (${result.bytes_written} bytes)`);
+  if (result.exec_output) {
+    const { exit_status, stdout, stderr } = result.exec_output;
+    appendSftpLog(`コマンド実行結果 (exit=${exit_status ?? "unknown"}):`);
+    if (stdout.trim()) appendSftpLog(`  stdout: ${stdout.trim()}`);
+    if (stderr.trim()) appendSftpLog(`  stderr: ${stderr.trim()}`);
+  }
+}
+
+function readUploadForm() {
   const keyLabel = document.querySelector<HTMLInputElement>("#upload-key-label")?.value.trim() ?? "";
   const host = document.querySelector<HTMLInputElement>("#sftp-host")?.value.trim() ?? "";
   const port = Number(document.querySelector<HTMLInputElement>("#sftp-port")?.value.trim() || "22");
   const username = document.querySelector<HTMLInputElement>("#sftp-user")?.value.trim() ?? "";
+  return { keyLabel, host, port, username };
+}
+
+document.querySelector<HTMLButtonElement>("#btn-upload")?.addEventListener("click", async () => {
+  const { keyLabel, host, port, username } = readUploadForm();
   const remotePath = document.querySelector<HTMLInputElement>("#sftp-path")?.value.trim() ?? "";
+  const execAfterUpload = document.querySelector<HTMLInputElement>("#sftp-exec")?.value.trim() || undefined;
 
   if (!keyLabel || !host || !username || !remotePath) {
     appendSftpLog("鍵ラベル・ホスト・ユーザー名・アップロード先パスは必須です。");
@@ -178,16 +213,134 @@ document.querySelector<HTMLButtonElement>("#btn-upload")?.addEventListener("clic
 
   appendSftpLog(`アップロード開始: ${username}@${host}:${port} -> ${remotePath}`);
   try {
-    const result = await invoke<{ remote_path: string; bytes_written: number }>("sftp_upload_text", {
+    const result = await invoke<UploadResultDto>("sftp_upload_text", {
       host,
       port,
       username,
       keyLabel,
       remotePath,
       content,
+      execAfterUpload,
     });
-    appendSftpLog(`アップロード完了: ${result.remote_path} (${result.bytes_written} bytes)`);
+    logUploadResult(result);
   } catch (e) {
     appendSftpLog(`アップロードエラー: ${String(e)}`);
+  }
+});
+
+document.querySelector<HTMLButtonElement>("#btn-forget-host")?.addEventListener("click", async () => {
+  const { host, port } = readUploadForm();
+  if (!host) {
+    appendSftpLog("ホストを入力してください。");
+    return;
+  }
+  try {
+    await invoke("sftp_forget_host", { host, port });
+    appendSftpLog(`${host}:${port} の記録済みホスト鍵をリセットしました。次回接続時に再度TOFUで記録します。`);
+  } catch (e) {
+    appendSftpLog(`リセットエラー: ${String(e)}`);
+  }
+});
+
+// ==========================================================================
+// QRコード読み取り(端末間ペアリングの受信側)
+// ==========================================================================
+
+const scanVideo = document.querySelector<HTMLVideoElement>("#scan-video")!;
+const scanCanvas = document.querySelector<HTMLCanvasElement>("#scan-canvas")!;
+const scanResultEl = document.querySelector<HTMLDivElement>("#scan-result")!;
+const btnStartScan = document.querySelector<HTMLButtonElement>("#btn-start-scan")!;
+const btnStopScan = document.querySelector<HTMLButtonElement>("#btn-stop-scan")!;
+const btnInstallScannedKey = document.querySelector<HTMLButtonElement>("#btn-install-scanned-key")!;
+
+let scanStream: MediaStream | null = null;
+let scanLoopHandle: number | null = null;
+let scannedPayload: { label: string; public_key_openssh: string; fingerprint: string } | null = null;
+
+async function startScan() {
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  } catch (e) {
+    appendSftpLog(`カメラを開けませんでした: ${String(e)}`);
+    return;
+  }
+  scanVideo.srcObject = scanStream;
+  scanVideo.style.display = "block";
+  await scanVideo.play();
+
+  btnStartScan.style.display = "none";
+  btnStopScan.style.display = "inline-block";
+
+  const ctx = scanCanvas.getContext("2d", { willReadFrequently: true })!;
+  const tick = () => {
+    if (!scanStream) return;
+    if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
+      scanCanvas.width = scanVideo.videoWidth;
+      scanCanvas.height = scanVideo.videoHeight;
+      ctx.drawImage(scanVideo, 0, 0, scanCanvas.width, scanCanvas.height);
+      const imageData = ctx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert",
+      });
+      if (code) {
+        onScanSuccess(code.data);
+        return;
+      }
+    }
+    scanLoopHandle = requestAnimationFrame(tick);
+  };
+  scanLoopHandle = requestAnimationFrame(tick);
+}
+
+function stopScan() {
+  if (scanLoopHandle !== null) cancelAnimationFrame(scanLoopHandle);
+  scanLoopHandle = null;
+  scanStream?.getTracks().forEach((t) => t.stop());
+  scanStream = null;
+  scanVideo.style.display = "none";
+  btnStartScan.style.display = "inline-block";
+  btnStopScan.style.display = "none";
+}
+
+function onScanSuccess(raw: string) {
+  stopScan();
+  try {
+    const payload = JSON.parse(raw) as { label: string; public_key_openssh: string; fingerprint: string };
+    if (!payload.public_key_openssh) throw new Error("公開鍵情報が含まれていません");
+    scannedPayload = payload;
+    scanResultEl.style.display = "block";
+    scanResultEl.innerHTML = `
+      <div class="key-item-label">${escapeHtml(payload.label)}</div>
+      <div class="key-item-fp">${escapeHtml(payload.fingerprint)}</div>
+      <div class="key-item-fp">${escapeHtml(payload.public_key_openssh)}</div>`;
+    btnInstallScannedKey.style.display = "inline-block";
+    appendSftpLog(`QR読み取り成功: ${payload.label} (${payload.fingerprint})`);
+  } catch (e) {
+    appendSftpLog(`QR内容の解析に失敗しました: ${String(e)}`);
+  }
+}
+
+btnStartScan.addEventListener("click", () => void startScan());
+btnStopScan.addEventListener("click", stopScan);
+
+btnInstallScannedKey.addEventListener("click", async () => {
+  if (!scannedPayload) return;
+  const { keyLabel, host, port, username } = readUploadForm();
+  if (!keyLabel || !host || !username) {
+    appendSftpLog("3のセクションに鍵ラベル・ホスト・ユーザー名を入力してから実行してください。");
+    return;
+  }
+  appendSftpLog(`authorized_keys追記開始: ${username}@${host}:${port} <- ${scannedPayload.label}`);
+  try {
+    const result = await invoke<UploadResultDto>("sftp_append_authorized_key", {
+      host,
+      port,
+      username,
+      keyLabel,
+      publicKeyLine: scannedPayload.public_key_openssh,
+    });
+    logUploadResult(result);
+  } catch (e) {
+    appendSftpLog(`authorized_keys追記エラー: ${String(e)}`);
   }
 });

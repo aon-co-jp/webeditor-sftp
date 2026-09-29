@@ -52,13 +52,21 @@ webeditor-sftp/
 - 鍵ペア生成はed25519(`russh-keys`、`src-tauri/src/sftp/keys.rs`)。
 - SFTP接続は`russh`+`russh-sftp`(純Rust実装、libssh2/OpenSSLへの
   ネイティブ依存なし、`src-tauri/src/sftp/client.rs`)。
-  **⚠️ 現状ホスト鍵検証が未実装(accept-all)。本番接続前に必ずTOFU化
-  すること**([`PORTING.md`](PORTING.md)参照)。
+  ホスト鍵検証はTOFU方式(`src-tauri/src/sftp/known_hosts.rs`)。
+  初回接続でフィンガープリントを記録し、以後不一致なら接続を拒否する。
+  記録は`~/.ssh/known_hosts`と同様、秘密情報ではないため平文JSON
+  (アプリ設定ディレクトリ配下)。
 - デバイス間の鍵の受け渡し(例: Windows→Android)は、この端末間で
   Claude等の外部AIツールを経由させない(ユーザー要件)。**QRコード方式
   を採用**(`src-tauri/src/sftp/pairing.rs`)。公開鍵のみをQR化し、
-  秘密鍵は画面越しの盗撮リスクがあるため対象外。QR生成のみ実装済み、
-  カメラでの読み取り(受信側)は未実装。
+  秘密鍵は画面越しの盗撮リスクがあるため対象外。生成・カメラでの
+  読み取り(`jsqr`、`src/main.ts`)の双方向を実装済み。読み取った
+  公開鍵は`sftp_append_authorized_key`コマンドでリモートの
+  `~/.ssh/authorized_keys`へ追記できる。
+- `audiocafe-tokyo-rust`のような`include_str!`コンパイル時埋め込み
+  方式のサイト向けに、SFTPアップロード後の任意コマンド実行
+  (`exec_after_upload`、`sftp_upload_text`)を実装。SSH execチャネル
+  経由でリモートビルド・サービス再起動まで一括実行できる。
 
 ### エディターの2モード
 

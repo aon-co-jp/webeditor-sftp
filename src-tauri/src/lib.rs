@@ -18,7 +18,9 @@ pub fn run() {
             sftp::sftp_generate_keypair,
             sftp::sftp_delete_keypair,
             sftp::sftp_generate_pairing_qr,
+            sftp::sftp_forget_host,
             sftp::sftp_upload_text,
+            sftp::sftp_append_authorized_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

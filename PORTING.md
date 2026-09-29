@@ -115,3 +115,86 @@
      コマンドを実行するオプション」の追加。
   5. ブログモード⇔コーディングモード変換の対応範囲拡大(画像・
      リンク・テーブル等)。
+
+- **2026-09-29 残課題4件を修正(ユーザー指示「再開して　修正して」)**:
+
+  1. **TOFU(ホスト鍵検証)実装**: `src-tauri/src/sftp/known_hosts.rs`を
+     新設。初回接続時にサーバーの公開鍵フィンガープリントをアプリ設定
+     ディレクトリ(`dirs::config_dir()`配下、`known_hosts.json`)へ記録
+     し(`TrustedOnFirstUse`)、以後は記録済み値との一致を必須化。
+     不一致の場合は接続そのものを拒否する(`client.rs`の
+     `TofuHostKeyVerifier::check_server_key`)。単体テスト4件で
+     「初回信頼」「一致時は継続」「不一致は拒否」「リセット後は
+     再度初回信頼」を確認済み(`cargo test`)。アップロード結果に
+     `host_key_trust`("trusted_first_time"/"known")を含め、初回接続
+     時はフロント側ログで⚠️警告を表示するようにした
+     (`src/main.ts`の`logUploadResult`)。サーバー側の鍵を意図的に
+     再生成した場合のためのリセットボタン(`sftp_forget_host`
+     コマンド)もSFTPパネルに追加。
+     **既知の制約**: `known_hosts.json`はOpenSSHの`known_hosts`と同様
+     平文JSON(秘密情報ではないため`keyring`は使わない設計)。
+  2. **QRコードのカメラ読み取り(受信側)実装**: `jsqr`(ピュアJS)を
+     導入し、`getUserMedia`でカメラ映像を取得→Canvasへ描画→フレーム
+     ごとに`jsQR`でデコードするループを`src/main.ts`に実装。読み取った
+     公開鍵は画面表示し、「authorized_keysに追記」ボタンで新規Tauri
+     コマンド`sftp_append_authorized_key`
+     (`src-tauri/src/sftp/client.rs::append_authorized_key`)を呼び出し、
+     既存のSFTP接続(3欄のホスト/ユーザー/鍵)経由でリモートの
+     `~/.ssh/authorized_keys`へ1行追記する(重複チェック付き)。
+     **既知の制約**: デスクトップのTauri WebView(WebView2)の
+     `getUserMedia`前提で実装。モバイル(Android/iOS)ではネイティブの
+     カメラパーミッション/プラグイン(`tauri-plugin-barcode-scanner`等)
+     が別途必要になる可能性があり未検証。
+  3. **`tauri dev`ネイティブウィンドウの実機起動確認**:
+     このセッション環境で`npm run tauri dev`を実行し、
+     `cargo build`(新規依存追加後のフルビルド、約41秒)が完走して
+     `app.exe`プロセスが実際に起動・稼働し続けることを`tasklist`で
+     確認した(ビルド時間: 新規追加した`russh`/`russh-sftp`/
+     `keyring`/`qrcode`/`image`/`dirs`等により初回は数分)。
+     その後、computer-useツールで画面キャプチャ・クリック操作を
+     試みたが、`request_access`がスタートメニュー/インストール済み
+     アプリの一覧から名前解決する方式のため、アドホックな開発バイナリ
+     (`app.exe`)を許可対象として指定できず、**「候補にない」として
+     ユーザーへの許可ダイアログ自体が出せなかった**(却下ではなく、
+     そもそも要求が成立しなかった)。ブラウザプレビュー(Claude_Browser)
+     はWebコンテンツ専用でネイティブウィンドウを映せない。
+     結果として、**プロセスが起動しクラッシュしないことは確認できたが、
+     実際の画面表示・ボタンクリックによる動作確認はこのセッション環境
+     では技術的に実施不可能だった**(誤魔化さず正直に報告)。
+     実際のボタン操作でのE2E確認(鍵生成→Credential Managerへの
+     実際の格納確認→実SFTP接続)は、ユーザー自身の画面で
+     `npm run tauri dev`を実行して行うか、このアプリをスタートメニュー
+     に登録可能な形でインストールした状態でcomputer-useを使うか、
+     いずれかが必要。
+  4. **`audiocafe.tokyo`向けリモートビルド対応**: SFTPアップロード
+     コマンドに`exec_after_upload`(任意)パラメータを追加
+     (`sftp_upload_text`)。アップロード完了後、同一SSHセッションで
+     指定コマンドを実行し、`stdout`/`stderr`/終了コードをフロントへ
+     返す(`client.rs::run_command`、`russh`の`exec`チャネル使用)。
+     UIには「アップロード後に実行するコマンド」欄を追加し、
+     `audiocafe-tokyo-rust`のような`include_str!`コンパイル時埋め込み
+     方式サイト向けに`git pull && cargo build --release && systemctl
+     restart ...`のようなコマンドを指定できるようにした。
+     静的資産限定モードは実装せず(汎用のコマンド実行オプションで
+     両方のユースケースをカバーできるため)。
+
+  **検証内容**: `cargo check`/`cargo test --lib`(editor 2件+
+  known_hosts 4件、計6件pass)/`cargo clippy --lib`(警告0件)/
+  `npx tsc --noEmit`/`npm run build`(vite本番ビルド成功)/
+  `npm run tauri dev`でのプロセス起動確認(`tasklist`で`app.exe`稼働を
+  確認、クラッシュなし)。**GUI目視・クリック動作確認は上記3の理由で
+  未実施**。
+
+  **次回再開ポイント(優先順)**:
+  1. ユーザー自身の画面、またはGUI操作可能な環境で`tauri dev`の
+     実機E2E確認(鍵生成ボタン→Windows資格情報マネージャーに実際に
+     保存されるか確認→検証用VPS等への実SFTPアップロード→TOFU初回
+     警告が出ることを確認→2回目接続時は警告が出ないことを確認)。
+  2. QRコード読み取りをAndroid実機(Tauri mobile)で検証、
+     `getUserMedia`がモバイルWebViewで動くか要確認。動かない場合は
+     `tauri-plugin-barcode-scanner`等ネイティブプラグインへの切替を
+     検討。
+  3. `audiocafe.tokyo`の実VPSに対して、静的資産アップロード+
+     (必要な場合のみ)リモートビルドコマンド実行のE2Eを実施。
+  4. ブログモード⇔コーディングモード変換の対応範囲拡大(画像・
+     リンク・テーブル等、引き続き未着手)。

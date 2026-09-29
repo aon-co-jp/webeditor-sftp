@@ -38,6 +38,7 @@ qrcode = "0.14"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
 async-trait = "0.1"
+dirs = "5"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
