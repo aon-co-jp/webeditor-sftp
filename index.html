@@ -59,10 +59,19 @@
               <h2>2. 端末間ペアリング(公開鍵QR)</h2>
               <p class="hint small">
                 別端末のカメラで読み取って公開鍵を受け渡します(秘密鍵は
-                QR化しません)。カメラでの読み取り機能自体は未実装、
-                表示のみのプロトタイプです。
+                QR化しません)。
               </p>
               <img id="pairing-qr" alt="ペアリングQRコード" />
+
+              <h3>QR読み取り(受信側)</h3>
+              <button id="btn-start-scan">カメラでQRを読み取る</button>
+              <button id="btn-stop-scan" style="display:none">読み取り停止</button>
+              <video id="scan-video" playsinline style="display:none"></video>
+              <canvas id="scan-canvas" style="display:none"></canvas>
+              <div id="scan-result" class="key-item" style="display:none"></div>
+              <button id="btn-install-scanned-key" style="display:none">
+                下記3のホスト/ユーザー/鍵でauthorized_keysに追記
+              </button>
             </div>
 
             <div class="sftp-col">
@@ -76,10 +85,21 @@
               <label>アップロード先パス
                 <input id="sftp-path" placeholder="例: /var/www/audiocafe.tokyo/public/index.html" />
               </label>
+              <label>アップロード後に実行するコマンド(任意)
+                <input id="sftp-exec" placeholder="例: cd /path/to/audiocafe-tokyo-rust && git pull && cargo build --release && sudo systemctl restart audiocafe-tokyo-rust" />
+              </label>
               <p class="hint small">
                 アップロード内容は「コーディングモード」の現在の内容(HTML)です。
+                コンパイル時埋め込み方式のサイト(例: audiocafe-tokyo-rust)は
+                単純アップロードだけでは反映されないため、上のコマンド欄で
+                リモートビルド・再起動まで指定してください。
               </p>
               <button id="btn-upload">SFTPアップロード</button>
+              <p class="hint small">
+                ホスト鍵はTOFU方式で照合されます。サーバー側の鍵を意図的に
+                再生成した場合のみ、下のボタンで記録をリセットしてください。
+              </p>
+              <button id="btn-forget-host" class="secondary">このホストの記録済み鍵をリセット</button>
             </div>
           </div>
 

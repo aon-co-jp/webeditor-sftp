@@ -158,6 +158,23 @@ main {
   cursor: pointer;
 }
 
+.sftp-col button.secondary {
+  background: #333;
+}
+
+.sftp-col h3 {
+  font-size: 12px;
+  color: #999;
+  margin: 8px 0 0;
+  text-transform: none;
+}
+
+#scan-video {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
 .key-list {
   display: flex;
   flex-direction: column;
