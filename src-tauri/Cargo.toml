@@ -17,6 +17,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[dev-dependencies]
+# QRコード生成が実際にデコード可能であることを検証するテスト専用。
+# カメラハードウェアを使わずに「エンコード内容が正しくスキャンできる」
+# ことを保証する(モバイル実機でのカメラ動作そのものは別途要検証)。
+rqrr = "0.7"
+
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
