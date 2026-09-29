@@ -335,3 +335,31 @@
   4. `keyring`のバグと同種の「エラーを返さず無音で失敗する」パターンが
      他の依存クレート(`russh`/`russh-sftp`等)にも無いか、余裕があれば
      次回洗い出す価値がある。
+
+- **2026-09-30 リリースビルド作成、次回方針メモ2件
+  (ユーザー指示「コミット push デプロイ」+雑談メモ)**:
+  `cargo tauri build`でWindows用インストーラー2種
+  (`app_0.1.0_x64_en-US.msi`/`app_0.1.0_x64-setup.exe`、
+  `src-tauri/target/release/bundle/`配下)を作成。配布先
+  (GitHub Releases等)は未指定のためローカルビルドのみ、ユーザーへ
+  ファイル送付のみ実施。
+
+  **次回方針メモ(未着手、要相談)**:
+  1. **Windows版をVSCode拡張機能としても開発する**(ユーザー指示)。
+     技術的に実現可能と判断: VSCodeのWebview API(任意のHTML/CSS/JS)
+     でブログ/コーディングモードUIをほぼ流用でき、コーディングモード
+     はVSCode組み込みMonacoエディターへの置き換えも可能。
+     SFTP鍵管理・keyring・SSH接続部分(`src-tauri/src/sftp/`)は
+     サイドカーCLIバイナリとして切り出し、拡張機能からNode.js拡張
+     ホスト経由でstdio呼び出しする設計を想定。既存のスタンドアロン
+     Tauriアプリを置き換えるのではなく、追加インターフェースとして
+     位置づける。
+  2. **スマホ用をスマホ用VSCode拡張として開発する案は不採用と回答**
+     (ユーザー質問への回答): iOS/Android向けの「VSCode本体アプリ」
+     自体が存在せず(App Store/Google Playに無い)、唯一近い
+     `vscode.dev`(ブラウザ内Web版VSCode)はWeb Extensionという
+     強く制限された実行環境で動くため、Node.jsのファイルシステムAPI・
+     ネイティブモジュール・生ソケット通信が使えず、SSH/SFTP接続も
+     OSセキュアストレージ(Keychain/Keystore)アクセスも実装不可能。
+     結論: スマホは引き続き**Tauri mobile(Android/iOS向けネイティブ
+     アプリ)**の方針のままとする。
