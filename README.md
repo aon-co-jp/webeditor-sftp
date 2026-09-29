@@ -37,10 +37,13 @@
 
 ## 現状
 
-設計段階+最小プロトタイプ(`npm create tauri-app`雛形をベースに、
-ブログモード/コーディングモード切替のUI雛形とSFTP鍵管理UI雛形のみ配置)。
-実際の鍵生成・SFTP接続・CodeMirror統合は未実装。詳細は
-[`PORTING.md`](PORTING.md)を参照。
+- ブログモード⇔コーディングモードの相互変換(見出し/箇条書き/段落/
+  強調)、CodeMirror 6統合、ed25519鍵ペア生成+OSセキュアストレージ
+  保存、SFTPアップロード(russh/russh-sftp)、QRコードによる公開鍵
+  ペアリング(生成側のみ)まで実装済み。
+- 未実装: ホスト鍵検証(TOFU、**本番接続前に必須**)、QRコード読み取り
+  (受信側)、Android/iOS/macOS実機検証。
+- 詳細・既知の制約は[`PORTING.md`](PORTING.md)を参照。
 
 ## 開発
 
