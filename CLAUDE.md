@@ -44,15 +44,21 @@ webeditor-sftp/
 
 - 秘密鍵は生成後、平文でアプリ外(クリップボード履歴・一時ファイル等)
   に残さない設計とする。
-- 保存先は各OSのセキュアストレージAPI経由
-  (Windows: Credential Manager / Android: Keystore / 将来のmacOS:
-  Keychain / 将来のiOS: Keychain)。Tauriプラグイン
-  `tauri-plugin-store`はセキュアストレージではないため鍵保存には
-  使わず、OSネイティブAPIを直接叩くRustコードを別途実装する。
+- 保存先は各OSのセキュアストレージAPI経由。実装は`keyring`クレート
+  (Windows: Credential Manager / macOS: Keychain / Linux: Secret
+  Service)。`src-tauri/src/sftp/keystore.rs`参照。Android/iOSの
+  Keystore/Keychain対応は各プラットフォームビルド時に要検証(未実機
+  確認)。
+- 鍵ペア生成はed25519(`russh-keys`、`src-tauri/src/sftp/keys.rs`)。
+- SFTP接続は`russh`+`russh-sftp`(純Rust実装、libssh2/OpenSSLへの
+  ネイティブ依存なし、`src-tauri/src/sftp/client.rs`)。
+  **⚠️ 現状ホスト鍵検証が未実装(accept-all)。本番接続前に必ずTOFU化
+  すること**([`PORTING.md`](PORTING.md)参照)。
 - デバイス間の鍵の受け渡し(例: Windows→Android)は、この端末間で
-  Claude等の外部AIツールを経由させない(ユーザー要件)。QRコード経由の
-  一時転送、またはアプリ同士の直接ペアリング(同一LAN内)を候補として
-  検討中(未確定、[`PORTING.md`](PORTING.md)参照)。
+  Claude等の外部AIツールを経由させない(ユーザー要件)。**QRコード方式
+  を採用**(`src-tauri/src/sftp/pairing.rs`)。公開鍵のみをQR化し、
+  秘密鍵は画面越しの盗撮リスクがあるため対象外。QR生成のみ実装済み、
+  カメラでの読み取り(受信側)は未実装。
 
 ### エディターの2モード
 

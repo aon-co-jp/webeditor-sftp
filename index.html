@@ -21,33 +21,69 @@
       <main>
         <section id="panel-blog" class="panel active">
           <p class="hint">
-            HTMLタグを意識せず、見出しや段落として文章を書くと自動でタグ化されます(プロトタイプ:
-            変換ロジック未実装、テキストエリアのみ)。
+            HTMLタグを意識せず、見出し(<code># </code>〜<code>### </code>)・
+            箇条書き(<code>- </code>)・段落として文章を書くと、
+            コーディングモードに切り替えた瞬間に自動でHTMLへ変換されます。
           </p>
-          <textarea id="blog-editor" placeholder="ここに記事本文を書いてください…"></textarea>
+          <textarea id="blog-editor" placeholder="# 見出し
+
+ここに記事本文を書いてください…箇条書きは - で始めます。
+**太字** や *斜体* も使えます。"></textarea>
         </section>
 
         <section id="panel-code" class="panel">
           <p class="hint">
-            生のHTML/CSS/JS/TSを編集するモード(プロトタイプ: CodeMirror
-            6統合は未実装、テキストエリアのみ)。
+            生のHTML/CSS/JS/TSを編集するモード(CodeMirror 6、括弧の自動補完付き)。
+            ブログモードに切り替えるとタグを除いた文章表示に戻ります。
           </p>
-          <textarea id="code-editor" spellcheck="false" placeholder="&lt;!doctype html&gt;..."></textarea>
+          <div id="code-editor-host"></div>
         </section>
 
         <section id="panel-sftp" class="panel">
           <p class="hint">
-            秘密鍵・公開鍵の生成/保管/SFTPアップロード(プロトタイプ:
-            UIのみ、Rust側の鍵生成・セキュアストレージ・SFTP接続は未実装)。
+            秘密鍵はOSのセキュアストレージ(Credential Manager等)に保存され、
+            画面上には公開鍵とフィンガープリントのみ表示されます。
           </p>
-          <div class="sftp-form">
-            <label>ホスト <input id="sftp-host" placeholder="例: audiocafe.tokyo" /></label>
-            <label>ユーザー名 <input id="sftp-user" placeholder="例: root" /></label>
-            <label>アップロード先パス <input id="sftp-path" placeholder="例: /var/www/audiocafe.tokyo/public" /></label>
-            <button id="btn-generate-key">鍵ペアを生成(未実装)</button>
-            <button id="btn-upload">SFTPアップロード(未実装)</button>
-            <pre id="sftp-log" class="log"></pre>
+
+          <div class="sftp-grid">
+            <div class="sftp-col">
+              <h2>1. 鍵ペア生成</h2>
+              <label>鍵ラベル
+                <input id="key-label" placeholder="例: audiocafe.tokyo-root" />
+              </label>
+              <button id="btn-generate-key">ed25519鍵ペアを生成</button>
+              <div id="key-list" class="key-list"></div>
+            </div>
+
+            <div class="sftp-col">
+              <h2>2. 端末間ペアリング(公開鍵QR)</h2>
+              <p class="hint small">
+                別端末のカメラで読み取って公開鍵を受け渡します(秘密鍵は
+                QR化しません)。カメラでの読み取り機能自体は未実装、
+                表示のみのプロトタイプです。
+              </p>
+              <img id="pairing-qr" alt="ペアリングQRコード" />
+            </div>
+
+            <div class="sftp-col">
+              <h2>3. SFTPアップロード</h2>
+              <label>使用する鍵ラベル
+                <input id="upload-key-label" placeholder="上で生成したラベル" />
+              </label>
+              <label>ホスト <input id="sftp-host" placeholder="例: audiocafe.tokyo" /></label>
+              <label>ポート <input id="sftp-port" value="22" /></label>
+              <label>ユーザー名 <input id="sftp-user" placeholder="例: root" /></label>
+              <label>アップロード先パス
+                <input id="sftp-path" placeholder="例: /var/www/audiocafe.tokyo/public/index.html" />
+              </label>
+              <p class="hint small">
+                アップロード内容は「コーディングモード」の現在の内容(HTML)です。
+              </p>
+              <button id="btn-upload">SFTPアップロード</button>
+            </div>
           </div>
+
+          <pre id="sftp-log" class="log"></pre>
         </section>
       </main>
     </div>
