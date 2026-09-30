@@ -1,0 +1,67 @@
+{
+  "name": "webeditor-sftp",
+  "displayName": "webeditor-sftp",
+  "description": "ブログ感覚のWEB文章編集(ブログモード⇔コーディングモード変換)と、SFTP鍵管理(生成・OSセキュアストレージ保存・アップロード)をVSCodeに統合する拡張機能。",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "aon-co-jp",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "webeditorSftp.openBlogPreview",
+        "title": "webeditor-sftp: ブログモードでプレビュー",
+        "icon": "$(book)"
+      },
+      {
+        "command": "webeditorSftp.convertToHtml",
+        "title": "webeditor-sftp: ブログ文章 → HTML変換して新規ファイルに開く"
+      },
+      {
+        "command": "webeditorSftp.convertToBlog",
+        "title": "webeditor-sftp: HTML → ブログ文章に変換して新規ファイルに開く"
+      },
+      {
+        "command": "webeditorSftp.generateKeypair",
+        "title": "webeditor-sftp: SFTP鍵ペアを生成(OSセキュアストレージに保存)"
+      },
+      {
+        "command": "webeditorSftp.uploadCurrentFile",
+        "title": "webeditor-sftp: 現在のファイルをSFTPでアップロード"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "webeditorSftp.openBlogPreview",
+          "group": "navigation",
+          "when": "resourceLangId == html"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "webeditor-sftp",
+      "properties": {
+        "webeditorSftp.sidecarPath": {
+          "type": "string",
+          "default": "",
+          "description": "webeditor-sidecar実行ファイルへの絶対パス。空の場合、拡張機能に同梱された(または開発時は隣接するcli/target配下の)バイナリを自動探索する。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
