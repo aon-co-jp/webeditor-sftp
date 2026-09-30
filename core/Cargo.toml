@@ -1,0 +1,50 @@
+[package]
+name = "webeditor-core"
+version = "0.1.0"
+edition = "2021"
+description = "webeditor-sftp のTauriに依存しない純粋なコアロジック(ブログ⇔コード変換、SFTP鍵管理)。src-tauriとcli(VSCode拡張向けサイドカー)の両方から参照される。"
+
+[lib]
+name = "webeditor_core"
+
+[dev-dependencies]
+# QRコード生成が実際にデコード可能であることを検証するテスト専用。
+rqrr = "0.7"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# SFTP鍵管理: 鍵ペア生成・OSセキュアストレージ・SFTP接続
+russh = "0.45"
+russh-keys = "0.45"
+russh-sftp = "2"
+rand = "0.8"
+base64 = "0.22"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+
+# 端末間の鍵ペアリング用QRコード生成
+qrcode = "0.14"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+async-trait = "0.1"
+dirs = "5"
+
+# keyringクレート3.x系はプラットフォームごとの実バックエンドを明示的な
+# featureで有効化しないと、実際には何も永続化しない「無音の失敗」に
+# なる(2026-09-29に実機検証で発覚、PORTING.md参照)。OS別に正しい
+# featureを指定する。Android向けのネイティブバックエンドは
+# keyringクレートに存在しないため、Android/iOS実機対応は別途検討要
+# (PORTING.md参照)。
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent"] }

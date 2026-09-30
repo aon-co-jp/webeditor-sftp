@@ -363,3 +363,54 @@
      ファイルシステムAPI・ネイティブモジュール・生ソケット通信が使えず、
      SSH/SFTP接続もOSセキュアストレージ(Keychain/Keystore)アクセスも
      実装不可能なため。
+
+- **2026-09-30 Rustコアのサイドカーcli化を実施(ユーザー承認済み方針の
+  第一歩、ユーザー指示「再開して」)**:
+
+  Cargoワークスペース化し、以下の3クレート構成にした:
+
+  ```
+  webeditor-sftp/
+    Cargo.toml          [workspace] members + [profile.release]
+    core/                webeditor-core(ライブラリ)
+      src/editor/         ブログ⇔コード変換(旧src-tauri/src/editorを移動)
+      src/sftp/           鍵管理/SFTP(旧src-tauri/src/sftpを移動)
+    cli/                 webeditor-sidecar(バイナリ、新規)
+      src/main.rs          stdin/stdout JSON Linesプロトコルのディスパッチャ
+    src-tauri/           既存のTauriデスクトップアプリ
+      src/commands.rs      #[tauri::command]の薄いラッパー(新規)
+      src/lib.rs           commands::*を invoke_handler へ登録するだけに簡素化
+  ```
+
+  - `core`はTauriに一切依存しない純粋ロジックのみ(既存の単体テスト8件は
+    無変更のまま`core`側に移動、全pass)。`#[tauri::command]`属性は
+    `src-tauri/src/commands.rs`側にのみ存在する薄いラッパー関数へ移した。
+  - `cli`(`webeditor-sidecar`)は標準入出力でJSON Linesプロトコルを話す
+    サイドカーCLI。リクエスト`{"id":.., "method":"...", "params":{...}}`
+    →レスポンス`{"id":.., "ok":true/false, "result"/"error":...}`。
+    対応method: `editor.blogToHtml`/`editor.htmlToBlog`/
+    `sftp.generateKeypair`/`sftp.deleteKeypair`/
+    `sftp.generatePairingQr`/`sftp.forgetHost`/`sftp.uploadText`/
+    `sftp.appendAuthorizedKey`。これが次回のVSCode拡張機能から
+    Node.js拡張ホスト経由で呼び出される想定の窓口。
+  - **実機検証**: `cli`をビルドし、標準入力に手でJSONを流し込んで
+    (a)ブログ→HTML変換、(b)ed25519鍵ペア生成→`cmdkey /list`で
+    Windows資格情報マネージャーに実際に保存されることを確認、
+    (c)未知methodのエラー応答、(d)HTML→ブログ逆変換、の4パターンを
+    実際のプロセス起動で確認済み(検証用の鍵は削除済み)。
+  - `src-tauri`側も`cargo check --workspace`/`cargo test --workspace`
+    で全8テストpass、警告0を確認(リファクタリングによる退行なし)。
+  - `.gitignore`を`src-tauri/target/`→`target/`に更新
+    (ワークスペース化でビルド成果物はリポジトリ直下`target/`に集約)。
+
+  **次回再開ポイント**:
+  1. VSCode拡張機能本体(`vscode-extension/`ディレクトリ想定)の新規
+     作成。Node.js拡張ホストから`cli/target/release/webeditor-sidecar.exe`
+     を`child_process.spawn`で起動し、上記JSON Linesプロトコルで
+     通信するクライアント層を実装。
+  2. コーディングモードはVSCode組み込みのMonacoエディター(標準の
+     TextDocument/TextEditor API)を使い、ブログモードは独自の
+     WebviewPanelで実装する設計を具体化する。
+  3. `cli`のリリースビルド(`cargo build --release -p webeditor-sidecar`)
+     をVSCode拡張機能のパッケージに同梱する配布方法を検討
+     (プラットフォームごとのバイナリ同梱、または初回起動時ダウンロード)。

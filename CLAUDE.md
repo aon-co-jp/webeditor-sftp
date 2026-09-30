@@ -15,21 +15,38 @@
 
 ## アーキテクチャ概要
 
+Rust側はCargoワークスペース(`Cargo.toml`)として3クレートに分割
+(2026-09-30〜、VSCode拡張機能でのサイドカー再利用を見据えた構成):
+
 ```
 webeditor-sftp/
-  src-tauri/        Rust側(Tauriバックエンド)
+  Cargo.toml          [workspace] members = [core, cli, src-tauri]
+  core/               webeditor-core(ライブラリ、Tauriに非依存)
     src/
-      editor/        文章解析・HTML/CSS/JS生成補助(タグ自動化)
-      sftp/           鍵ペア生成・セキュアストレージ・SFTP接続
-      main.rs
-    Cargo.toml
+      editor/          ブログ⇔コードHTML相互変換
+      sftp/            鍵ペア生成・セキュアストレージ・SFTP接続
+  cli/                webeditor-sidecar(バイナリ)
+    src/main.rs         VSCode拡張機能向けサイドカーCLI。
+                        stdin/stdoutでJSON Linesプロトコルを話す
+                        (`{"id","method","params"}`→
+                        `{"id","ok","result"|"error"}`)。
+  src-tauri/          デスクトップアプリ本体(Tauriバックエンド)
+    src/
+      commands.rs       `webeditor_core`への薄い#[tauri::command]ラッパー
+      lib.rs            invoke_handlerへの登録のみ
     tauri.conf.json
-  src/               フロントエンド(Web技術、CodeMirror 6ベース)
-    editor/           ブログモード(タグ非表示)/コーディングモード切替
-    sftp-ui/          鍵の生成・インポート・エクスポート・接続UI
+  src/                フロントエンド(Web技術、CodeMirror 6ベース)
+    editor/             ブログモード(タグ非表示)/コーディングモード切替
+    sftp-ui/            鍵の生成・インポート・エクスポート・接続UI
     index.html
   PORTING.md          複数セッション横断の到達点・次回再開ポイント
 ```
+
+**実装は必ず`core/`に書く。** `src-tauri/src/commands.rs`と
+`cli/src/main.rs`はどちらも`webeditor_core`の薄いラッパーに徹し、
+ロジックの複製は行わない(Windows版のVSCode拡張機能からは`cli`の
+サイドカーバイナリを`child_process.spawn`で呼び出す想定、
+PORTING.md「2026-09-30」節参照)。
 
 ### プラットフォーム対応方針
 

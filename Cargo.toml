@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["core", "cli", "src-tauri"]
+
+# `core`はTauriに依存しない純粋なビジネスロジック(ブログ⇔コード変換、
+# SFTP鍵管理)。`src-tauri`(デスクトップアプリ本体)と`cli`(VSCode拡張
+# 向けサイドカーCLI)の両方がこれを参照することで、実装を1箇所に保つ。
+# 詳細は CLAUDE.md「アーキテクチャ概要」節を参照。
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

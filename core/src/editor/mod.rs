@@ -186,12 +186,13 @@ fn tag_name(tag: &str) -> String {
         .to_string()
 }
 
-#[tauri::command]
+/// `blog_to_html`のString引数版(Tauriコマンド/CLIコマンドいずれからも
+/// そのまま使える薄いラッパー)。
 pub fn editor_blog_to_html(text: String) -> Result<String, EditorError> {
     blog_to_html(&text)
 }
 
-#[tauri::command]
+/// `html_to_blog`のString引数版。
 pub fn editor_html_to_blog(html: String) -> Result<String, EditorError> {
     html_to_blog(&html)
 }
