@@ -414,3 +414,52 @@
   3. `cli`のリリースビルド(`cargo build --release -p webeditor-sidecar`)
      をVSCode拡張機能のパッケージに同梱する配布方法を検討
      (プラットフォームごとのバイナリ同梱、または初回起動時ダウンロード)。
+
+- **2026-09-30 VSCode拡張機能の雛形を作成(ユーザー指示)**:
+
+  `vscode-extension/`を新設。構成:
+
+  ```
+  vscode-extension/
+    package.json          コマンド5個+設定1個(sidecarPath)を定義
+    tsconfig.json
+    src/
+      sidecarClient.ts      webeditor-sidecarを子プロセス起動し
+                            JSON Linesで通信する薄いクライアント
+                            (resolveSidecarPathでバイナリ自動探索)
+      blogPreviewPanel.ts   ブログモード読み取り専用プレビュー(Webview)
+      extension.ts          activate()、5コマンドの登録
+    README.md              現状・未実装点の一覧
+  ```
+
+  登録済みコマンド:
+  1. `webeditor-sftp: ブログモードでプレビュー` — Webviewで読み取り
+     専用表示。
+  2. `webeditor-sftp: ブログ文章 → HTML変換して新規ファイルに開く`
+  3. `webeditor-sftp: HTML → ブログ文章に変換して新規ファイルに開く`
+  4. `webeditor-sftp: SFTP鍵ペアを生成(OSセキュアストレージに保存)`
+  5. `webeditor-sftp: 現在のファイルをSFTPでアップロード`
+     (ホスト鍵TOFU初回警告・アップロード後コマンド実行結果も
+     Output panelへ表示)
+
+  **設計上の徹底事項**: この拡張機能自身はロジックを一切持たない。
+  `sidecarClient.ts`が`webeditor-sidecar`プロセスと通信するだけの
+  薄い層であり、変換・鍵管理・SFTP接続の実装は`core/`(Rust)に
+  一本化されたまま。
+
+  **実機検証**: `cargo build -p webeditor-sidecar`でビルドした実バイナリ
+  に対し、`sidecarClient.ts`をコンパイルした実JSファイルから直接
+  Node.jsで呼び出し、(a)ブログ→HTML変換、(b)HTML→ブログ逆変換、
+  (c)未知methodのエラー伝播、が実際に動作することを確認済み
+  (VSCode拡張機能ホスト自体の起動確認(`F5`でのExtension Development
+  Host起動)は、このセッション環境にVSCode本体が無いため未実施)。
+  `npx tsc -p ./`で型エラー0件。
+
+  **次回再開ポイント**:
+  1. **VSCode Extension Development Hostでの実機起動確認**
+     (`F5`実行、コマンドパレットから5コマンドを実際に叩く)は
+     ユーザーの実機で実施が必要。
+  2. コーディングモード(Monacoエディター統合)、ブログモードの
+     双方向編集(Webview→元ファイルへの書き戻し)は未実装。
+  3. QRコードペアリング機能はVSCode側に未移植。
+  4. VSIXパッケージ化+サイドカーバイナリ同梱方法の検討。
