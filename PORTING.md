@@ -344,22 +344,22 @@
   (GitHub Releases等)は未指定のためローカルビルドのみ、ユーザーへ
   ファイル送付のみ実施。
 
-  **次回方針メモ(未着手、要相談)**:
-  1. **Windows版をVSCode拡張機能としても開発する**(ユーザー指示)。
-     技術的に実現可能と判断: VSCodeのWebview API(任意のHTML/CSS/JS)
-     でブログ/コーディングモードUIをほぼ流用でき、コーディングモード
-     はVSCode組み込みMonacoエディターへの置き換えも可能。
-     SFTP鍵管理・keyring・SSH接続部分(`src-tauri/src/sftp/`)は
-     サイドカーCLIバイナリとして切り出し、拡張機能からNode.js拡張
-     ホスト経由でstdio呼び出しする設計を想定。既存のスタンドアロン
-     Tauriアプリを置き換えるのではなく、追加インターフェースとして
-     位置づける。
-  2. **スマホ用をスマホ用VSCode拡張として開発する案は不採用と回答**
-     (ユーザー質問への回答): iOS/Android向けの「VSCode本体アプリ」
-     自体が存在せず(App Store/Google Playに無い)、唯一近い
-     `vscode.dev`(ブラウザ内Web版VSCode)はWeb Extensionという
-     強く制限された実行環境で動くため、Node.jsのファイルシステムAPI・
-     ネイティブモジュール・生ソケット通信が使えず、SSH/SFTP接続も
-     OSセキュアストレージ(Keychain/Keystore)アクセスも実装不可能。
-     結論: スマホは引き続き**Tauri mobile(Android/iOS向けネイティブ
-     アプリ)**の方針のままとする。
+  **次回方針(2026-09-30、ユーザー承認済み・確定)**:
+  1. **Windows版はVSCode拡張機能としても開発する**(ユーザー指示、
+     提案内容を承認済み)。VSCodeのWebview API(任意のHTML/CSS/JS)で
+     ブログ/コーディングモードUIをほぼ流用でき、コーディングモードは
+     VSCode組み込みMonacoエディターへの置き換えも可能。SFTP鍵管理・
+     keyring・SSH接続部分(`src-tauri/src/sftp/`)はサイドカーCLI
+     バイナリとして切り出し、拡張機能からNode.js拡張ホスト経由で
+     stdio呼び出しする設計を想定。既存のスタンドアロンTauriアプリを
+     置き換えるのではなく、追加インターフェースとして位置づける。
+     次回実装着手時は、まずRustコアのサイドカーCLI化(引数/stdin/stdout
+     でのコマンド呼び出しインターフェース設計)から始める。
+  2. **スマホ用はTauri mobile(Android/iOS向けネイティブアプリ)方針を
+     維持、VSCode拡張化はしない**(ユーザー承認済み・確定)。
+     iOS/Android向けの「VSCode本体アプリ」自体が存在せず(App Store/
+     Google Playに無い)、唯一近い`vscode.dev`(ブラウザ内Web版VSCode)
+     はWeb Extensionという強く制限された実行環境で動くため、Node.jsの
+     ファイルシステムAPI・ネイティブモジュール・生ソケット通信が使えず、
+     SSH/SFTP接続もOSセキュアストレージ(Keychain/Keystore)アクセスも
+     実装不可能なため。
