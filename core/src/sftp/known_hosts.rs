@@ -48,7 +48,7 @@ fn load() -> Result<KnownHostsFile, SftpError> {
     if raw.trim().is_empty() {
         return Ok(KnownHostsFile::default());
     }
-    serde_json::from_str(&raw).map_err(|e| SftpError::KeyStore(e.to_string()))
+    sonic_rs::from_str(&raw).map_err(|e| SftpError::KeyStore(e.to_string()))
 }
 
 fn save(file: &KnownHostsFile) -> Result<(), SftpError> {

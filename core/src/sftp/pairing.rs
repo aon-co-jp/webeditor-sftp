@@ -81,7 +81,7 @@ mod tests {
         assert_eq!(grids.len(), 1, "QRコードが1つ検出されるはず");
 
         let (_meta, decoded_text) = grids[0].decode().expect("QRデコードに失敗");
-        let decoded: PairingPayload = serde_json::from_str(&decoded_text).unwrap();
+        let decoded: PairingPayload = sonic_rs::from_str(&decoded_text).unwrap();
 
         assert_eq!(decoded.label, payload.label);
         assert_eq!(decoded.public_key_openssh, payload.public_key_openssh);
