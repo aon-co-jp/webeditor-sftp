@@ -41,7 +41,7 @@ async fn main() {
             continue;
         }
 
-        let response = match serde_json::from_str::<Request>(&line) {
+        let response = match sonic_rs::from_str::<Request>(&line) {
             Ok(req) => {
                 let id = req.id.clone();
                 match dispatch(&req.method, req.params).await {
